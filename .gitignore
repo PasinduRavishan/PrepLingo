@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Environment — NEVER commit secrets
+backend/.env
+frontend/.env.local
+
+# Database file
+backend/*.db
+backend/*.db-journal
+
+# ChromaDB — vector store data (regenerate with ingest script)
+backend/vector_store_data/
+
+# Node
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/

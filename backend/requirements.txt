@@ -1,0 +1,35 @@
+# Web Framework
+fastapi
+uvicorn[standard]
+
+# Database ORM — SQLModel = SQLAlchemy + Pydantic in one class
+sqlmodel
+
+# Auth — JWT tokens + password hashing
+python-jose[cryptography]
+passlib[bcrypt]
+
+# PDF Reading — extracts text from uploaded resumes
+pymupdf
+
+# LangChain Core — the orchestration framework
+langchain
+langchain-core
+langchain-community
+
+# LangChain — LLM & Embeddings integration
+langchain-google-genai
+langchain-groq
+
+# LangChain — ChromaDB vector store integration
+langchain-chroma
+
+# ChromaDB — our vector database
+chromadb
+
+# Pydantic Settings — reads .env file into a typed config object
+pydantic-settings
+
+# Utilities
+python-dotenv       # loads .env files
+python-multipart    # needed for file uploads in FastAPI

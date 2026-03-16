@@ -8,7 +8,7 @@
 
 | # | Decision | Choice | Notes |
 |---|---|---|---|
-| 1 | LLM Provider | **Google Gemini** | Free tier, `ChatGoogleGenerativeAI` in LangChain |
+| 1 | LLM Provider | **Groq (Llama 3.3 70B)** | Fast inference, good free-tier throughput for iterative interview loops |
 | 2 | Embeddings | **`gemini-embedding-001`** | `text-embedding-004` deprecated — updated during Phase 2 |
 | 3 | Vector Store | **ChromaDB** | Persistent, metadata filtering, LangChain native |
 | 4 | CV in RAG | **Hybrid** (JSON summary + vector chunks) | JSON = overview, chunks = deep-dive retrieval |
@@ -17,6 +17,7 @@
 | 7 | Auth | **Guest mode first** | Focus on AI core, JWT auth added in Phase 5 |
 | 8 | LangChain depth | **Full LCEL** | Modern LangChain standard, full learning value |
 | 9 | Model config | **Centralized in `config.py`** | Change model in `.env` — no code changes needed |
+| 10 | Report generation strategy | **Persisted, idempotent service** | Phase 4 uses cached report by default; supports forced regeneration |
 
 ---
 

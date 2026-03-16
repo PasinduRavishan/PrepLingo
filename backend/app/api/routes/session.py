@@ -217,9 +217,9 @@ def end_session(
     Report generation happens in Phase 4.
     """
     from app.models.session import InterviewSession, SessionStatus
+    from app.services.report_service import generate_or_get_report
     from datetime import datetime
 
-    from app.models.session import InterviewSession
     session = db.get(InterviewSession, session_id)
     if not session:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
@@ -229,8 +229,15 @@ def end_session(
     db.add(session)
     db.commit()
 
+    report_message = "Session ended."
+    try:
+        generate_or_get_report(session_id=session_id, db=db)
+        report_message = "Session ended and report generated."
+    except Exception as e:
+        report_message = f"Session ended. Report not generated yet: {str(e)}"
+
     return {
         "session_id": session_id,
         "status": "completed",
-        "message": "Session ended. Report generation coming in Phase 4.",
+        "message": report_message,
     }

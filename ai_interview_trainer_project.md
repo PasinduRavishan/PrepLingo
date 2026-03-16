@@ -194,7 +194,9 @@ Phase 2 -- Resume Parsing - PDF upload - Extract skills and projects
 Phase 3 -- RAG Integration - Knowledge base ingestion - Embeddings -
 Retrieval pipeline
 
-Phase 4 -- Evaluation Engine - Scoring system - Feedback generation
+Phase 4 -- Evaluation Engine - Scoring system - Feedback generation ✅ Implemented (Report service + API + tests)
+
+Phase 5 -- Authentication - JWT login/refresh - Account-linked sessions (next)
 
 ------------------------------------------------------------------------
 

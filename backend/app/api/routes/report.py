@@ -1,50 +1,58 @@
-"""
-routes/report.py — Report Endpoints
+"""routes/report.py — Phase 4 report generation and retrieval endpoints."""
 
-WHAT A REPORT CONTAINS:
-  After the interview (8 questions), the backend computes a final report:
-  
-  - overall_score: 0-100 percentage
-  - per_question_scores: [8, 6, 7, 5, 8, 7, 6, 8] — line chart
-  - per_dimension_scores: {technical: 7.2, clarity: 8.1, ...} — radar chart
-  - top_strengths: ["Clear explanations", "Good examples"]
-  - top_weaknesses: ["Missed caching", "Vague on scaling"]
-  - suggestions: ["Study cache-aside pattern", "Read about CDN"]
+from typing import Any
 
-ENDPOINTS:
-  GET /api/report/{session_id} — Get the report for a session
-"""
-
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlmodel import Session
 
 from app.db.database import get_db
+from app.services import report_service
 
 router = APIRouter()
+
+
+class ReportResponse(BaseModel):
+    report_id: int
+    session_id: int
+    interview_type: str
+    overall_score: float
+    per_question_scores: list[int]
+    per_dimension_scores: dict[str, Any]
+    top_strengths: list[str]
+    top_weaknesses: list[str]
+    suggestions: list[str]
+    created_at: str
 
 
 @router.get("/{session_id}")
 def get_report(
     session_id: int,
+  regenerate: bool = Query(
+    default=False,
+    description="Regenerate report from evaluations even if one already exists",
+  ),
     db: Session = Depends(get_db),
 ):
     """
-    Get the final interview report.
-    
-    Phase 6 implementation:
-    - Fetch all Evaluation rows for this session
-    - Calculate averages per dimension
-    - Find top-3 most mentioned strengths/weaknesses
-    - Build and return Report object
+    Get a session report.
+
+    Behavior:
+    - If report already exists, return it
+    - If not, generate it from Evaluation rows (Phase 4)
+    - Optional regenerate=true forces recalculation
     """
-    # TODO: Phase 6
-    return {
-        "session_id": session_id,
-        "overall_score": 0,
-        "per_question_scores": [],
-        "per_dimension_scores": {},
-        "top_strengths": [],
-        "top_weaknesses": [],
-        "suggestions": [],
-        "message": "Report generation coming in Phase 6.",
-    }
+    try:
+      report = report_service.generate_or_get_report(
+        session_id=session_id,
+        db=db,
+        force_regenerate=regenerate,
+      )
+      payload = report_service.serialize_report(report)
+      return ReportResponse(**payload)
+    except ValueError as e:
+      detail = str(e)
+      status_code = 404 if "not found" in detail.lower() else 400
+      raise HTTPException(status_code=status_code, detail=detail)
+    except Exception as e:
+      raise HTTPException(status_code=500, detail=f"Failed to generate report: {str(e)}")

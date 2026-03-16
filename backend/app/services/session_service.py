@@ -73,6 +73,7 @@ from app.langchain_layer.chains.question_chain import build_question_chain
 from app.langchain_layer.chains.evaluation_chain import evaluate_answer
 from app.langchain_layer.memory.session_memory import get_or_create_memory, save_exchange, get_history
 from app.langchain_layer.prompts import get_prompt_for_type
+from app.services.report_service import generate_or_get_report
 
 
 # ── Step 1: Create Session ─────────────────────────────────────────
@@ -337,6 +338,15 @@ async def process_message(
 
     db.add(session)
     db.commit()
+
+    # Phase 4: eagerly generate report when session reaches completion.
+    # We keep this non-fatal so interview completion never fails due to report issues.
+    if is_complete:
+        try:
+            generate_or_get_report(session_id=session_id, db=db)
+            print(f"   📊 Report generated for session {session_id}")
+        except Exception as e:
+            print(f"   ⚠️ Report generation failed for session {session_id}: {e}")
 
     # ── 10. Return response ───────────────────────────────────────
     return {

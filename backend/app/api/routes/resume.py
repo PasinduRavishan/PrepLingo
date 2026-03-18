@@ -122,8 +122,8 @@ async def upload_resume(
 
     print(f"   ✅ Extracted {len(raw_text)} characters from PDF")
 
-    # ── Step 3: Parse with Gemini LLM ────────────────────────────
-    print("🤖 Parsing resume with Gemini (LangChain chain)...")
+    # ── Step 3: Parse with Groq LLM ──────────────────────────────
+    print("🤖 Parsing resume with Groq LLM (LangChain chain)...")
     parsed_data = await resume_service.parse_resume_with_llm(raw_text)
     print(f"   ✅ Extracted {len(parsed_data.get('skills', []))} skills, "
           f"{len(parsed_data.get('projects', []))} projects")

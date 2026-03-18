@@ -21,25 +21,24 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Copy installed packages from builder
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY --from=builder /root/.cache /root/.cache
+# Copy installed packages and executables from builder
+# site-packages: Python libraries; bin: executables (uvicorn, pip, etc.); cache: BAAI model
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages/
+COPY --from=builder /usr/local/bin /usr/local/bin/
+COPY --from=builder /root/.cache /root/.cache/
 
 # Copy app code
 COPY app/ ./app/
 COPY scripts/ ./scripts/
 COPY .env* ./
 
-# Create non-root user for security
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
-USER appuser
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD python -c "import requests; requests.get('http://localhost:8000/health', timeout=5)"
-
 # Expose port
 EXPOSE 8000
 
-# Run FastAPI
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+
+# Create data dir at startup (volume mount happens at runtime, not build time)
+# then launch uvicorn
+CMD ["sh", "-c", "mkdir -p /app/data && uvicorn app.main:app --host 0.0.0.0 --port 8000"]

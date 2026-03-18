@@ -24,6 +24,7 @@ langchain-text-splitters
 langchain-google-genai
 langchain-groq
 langchain-huggingface   # local embeddings — no API key, no rate limits
+sentence-transformers   # required by langchain-huggingface for BAAI/bge models
 
 # LangChain — ChromaDB vector store integration
 langchain-chroma

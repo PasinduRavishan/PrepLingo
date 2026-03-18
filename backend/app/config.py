@@ -22,8 +22,8 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    # Google API — NOW USED ONLY FOR EMBEDDINGS (not LLM)
-    google_api_key: str
+    # Google API — no longer required (embeddings use local BAAI model, LLM uses Groq)
+    google_api_key: str = ""
 
     # Groq API — newly added for lightning fast LLM generation
     groq_api_key: str

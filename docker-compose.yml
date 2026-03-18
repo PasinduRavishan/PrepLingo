@@ -15,14 +15,14 @@ services:
       - GROQ_MODEL=${GROQ_MODEL:-llama-3.3-70b-versatile}
       - GROQ_FALLBACK_MODEL=${GROQ_FALLBACK_MODEL:-llama-3.1-8b-instant}
       - EMBEDDING_MODEL=${EMBEDDING_MODEL:-BAAI/bge-base-en-v1.5}
-      - DATABASE_URL=${DATABASE_URL:-sqlite:///./preplingo.db}
+      - DATABASE_URL=${DATABASE_URL:-sqlite:////app/data/preplingo.db}
       - VECTOR_STORE_PATH=${VECTOR_STORE_PATH:-./vector_store_data}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-this-in-production}
       - APP_ENV=${APP_ENV:-production}
     volumes:
       - embedding-cache:/root/.cache/huggingface   # HuggingFace model cache
       - vector-data:/app/vector_store_data          # ChromaDB persistence
-      - db-data:/app                                # SQLite DB persistence
+      - db-data:/app/data                           # SQLite DB file only (not /app root)
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s

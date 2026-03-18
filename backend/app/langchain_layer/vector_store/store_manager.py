@@ -36,19 +36,16 @@ TWO COLLECTIONS:
 """
 
 from langchain_chroma import Chroma
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from app.config import get_settings
 
 settings = get_settings()
 
-# The embedding model — converts text to vectors
-# gemini-embedding-001 is Google's current embedding model, free with your API key
-# Replaces deprecated text-embedding-004
-# NOTE: if you change this, delete vector_store_data/ and re-run ingest_knowledge.py
-embeddings = GoogleGenerativeAIEmbeddings(
-    model=settings.embedding_model,
-    google_api_key=settings.google_api_key,
-)
+# Local HuggingFace embedding model — runs on CPU, no API key, no rate limits.
+# BAAI/bge-base-en-v1.5: 768 dims, MTEB 72.3, downloaded once (~430 MB) and cached.
+# For production, pre-download in Docker at build time to avoid cold-start delays.
+# NOTE: if you change this model, delete vector_store_data/ and re-run ingest_knowledge.py
+embeddings = HuggingFaceEmbeddings(model_name=settings.embedding_model)
 
 
 def get_knowledge_store() -> Chroma:

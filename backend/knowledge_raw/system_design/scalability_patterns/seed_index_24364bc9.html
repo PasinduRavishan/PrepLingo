@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <title>High Scalability</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <link rel="preload" as="style" href="https://highscalability.com/assets/built/screen.css?v=906dc06537">
+    <link rel="preload" as="script" href="https://highscalability.com/assets/built/source.js?v=906dc06537">
+    
+    <link rel="preload" as="font" type="font/woff2" href="https://highscalability.com/assets/fonts/inter-roman.woff2?v=906dc06537" crossorigin="anonymous">
+<style>
+    @font-face {
+        font-family: "Inter";
+        font-style: normal;
+        font-weight: 100 900;
+        font-display: optional;
+        src: url(https://highscalability.com/assets/fonts/inter-roman.woff2?v=906dc06537) format("woff2");
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+</style>
+
+    <link rel="stylesheet" type="text/css" href="https://highscalability.com/assets/built/screen.css?v=906dc06537">
+
+    <style>
+        :root {
+            --background-color: #ffffff
+        }
+    </style>
+
+    <script>
+        /* The script for calculating the color contrast has been taken from
+        https://gomakethings.com/dynamically-changing-the-text-color-based-on-background-color-contrast-with-vanilla-js/ */
+        var accentColor = getComputedStyle(document.documentElement).getPropertyValue('--background-color');
+        accentColor = accentColor.trim().slice(1);
+
+        if (accentColor.length === 3) {
+            accentColor = accentColor[0] + accentColor[0] + accentColor[1] + accentColor[1] + accentColor[2] + accentColor[2];
+        }
+
+        var r = parseInt(accentColor.substr(0, 2), 16);
+        var g = parseInt(accentColor.substr(2, 2), 16);
+        var b = parseInt(accentColor.substr(4, 2), 16);
+        var yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+        var textColor = (yiq >= 128) ? 'dark' : 'light';
+
+        document.documentElement.className = `has-${textColor}-text`;
+    </script>
+
+    <meta name="description" content="Building bigger, faster, more reliable websites.">
+    <link rel="canonical" href="https://highscalability.com/">
+    <meta name="referrer" content="no-referrer-when-downgrade">
+    <link rel="next" href="https://highscalability.com/page/2/">
+    
+    <meta property="og:site_name" content="High Scalability">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="High Scalability">
+    <meta property="og:description" content="Building bigger, faster, more reliable websites.">
+    <meta property="og:url" content="https://highscalability.com/">
+    <meta property="og:image" content="https://static.ghost.org/v5.0.0/images/publication-cover.jpg">
+    <meta property="article:publisher" content="https://www.facebook.com/ghost">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="High Scalability">
+    <meta name="twitter:description" content="Building bigger, faster, more reliable websites.">
+    <meta name="twitter:url" content="https://highscalability.com/">
+    <meta name="twitter:image" content="https://static.ghost.org/v5.0.0/images/publication-cover.jpg">
+    <meta name="twitter:site" content="@ghost">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="840">
+    
+    <script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "publisher": {
+        "@type": "Organization",
+        "name": "High Scalability",
+        "url": "https://highscalability.com/",
+        "logo": {
+            "@type": "ImageObject",
+            "url": "https://highscalability.com/favicon.ico",
+            "width": 48,
+            "height": 48
+        }
+    },
+    "url": "https://highscalability.com/",
+    "name": "High Scalability",
+    "image": {
+        "@type": "ImageObject",
+        "url": "https://static.ghost.org/v5.0.0/images/publication-cover.jpg",
+        "width": 1200,
+        "height": 840
+    },
+    "mainEntityOfPage": "https://highscalability.com/",
+    "description": "Building bigger, faster, more reliable websites."
+}
+    </script>
+
+    <meta name="generator" content="Ghost 6.22">
+    <link rel="alternate" type="application/rss+xml" title="High Scalability" href="https://highscalability.com/rss/">
+    <script defer src="https://cdn.jsdelivr.net/ghost/portal@~2.66/umd/portal.min.js" data-i18n="true" data-ghost="https://highscalability.com/" data-key="e7388272b3fcb33a0abfc2f95c" data-api="https://high-scalability.ghost.io/ghost/api/content/" data-locale="en" crossorigin="anonymous"></script><style id="gh-members-styles">.gh-post-upgrade-cta-content,
+.gh-post-upgrade-cta {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    text-align: center;
+    width: 100%;
+    color: #ffffff;
+    font-size: 16px;
+}
+
+.gh-post-upgrade-cta-content {
+    border-radius: 8px;
+    padding: 40px 4vw;
+}
+
+.gh-post-upgrade-cta h2 {
+    color: #ffffff;
+    font-size: 28px;
+    letter-spacing: -0.2px;
+    margin: 0;
+    padding: 0;
+}
+
+.gh-post-upgrade-cta p {
+    margin: 20px 0 0;
+    padding: 0;
+}
+
+.gh-post-upgrade-cta small {
+    font-size: 16px;
+    letter-spacing: -0.2px;
+}
+
+.gh-post-upgrade-cta a {
+    color: #ffffff;
+    cursor: pointer;
+    font-weight: 500;
+    box-shadow: none;
+    text-decoration: underline;
+}
+
+.gh-post-upgrade-cta a:hover {
+    color: #ffffff;
+    opacity: 0.8;
+    box-shadow: none;
+    text-decoration: underline;
+}
+
+.gh-post-upgrade-cta a.gh-btn {
+    display: block;
+    background: #ffffff;
+    text-decoration: none;
+    margin: 28px 0 0;
+    padding: 8px 18px;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.gh-post-upgrade-cta a.gh-btn:hover {
+    opacity: 0.92;
+}</style>
+    <script defer src="https://cdn.jsdelivr.net/ghost/sodo-search@~1.8/umd/sodo-search.min.js" data-key="e7388272b3fcb33a0abfc2f95c" data-styles="https://cdn.jsdelivr.net/ghost/sodo-search@~1.8/umd/main.css" data-sodo-search="https://high-scalability.ghost.io/" data-locale="en" crossorigin="anonymous"></script>
+    
+    <link href="https://highscalability.com/webmentions/receive/" rel="webmention">
+    <script defer src="/public/cards.min.js?v=906dc06537"></script>
+    <link rel="stylesheet" type="text/css" href="/public/cards.min.css?v=906dc06537">
+    <script defer src="/public/comment-counts.min.js?v=906dc06537" data-ghost-comments-counts-api="https://highscalability.com/members/api/comments/counts/"></script>
+    <script defer src="/public/member-attribution.min.js?v=906dc06537"></script>
+    <script defer src="/public/ghost-stats.min.js?v=906dc06537" data-stringify-payload="false" data-datasource="analytics_events" data-storage="localStorage" data-host="https://highscalability.com/.ghost/analytics/api/v1/page_hit"  tb_site_uuid="647204cd-7ad2-4539-b98a-3489074b932d" tb_post_uuid="undefined" tb_post_type="null" tb_member_uuid="undefined" tb_member_status="undefined"></script><style>:root {--ghost-accent-color: #35cea0;}</style>
+    <!-- Fathom - beautiful, simple website analytics -->
+                <script src="https://cdn.usefathom.com/script.js" data-site="XBRJSZNU" defer></script>
+              <!-- / Fathom -->
+<style>
+  /* Hide feature image on single post page in Source theme */
+  .post-template .gh-article-image {
+    display: none;
+  }
+  .gh-footer-copyright { display: none; }
+</style>
+
+</head>
+<body class="home-template has-sans-title has-sans-body">
+
+<div class="gh-viewport">
+    
+    <header id="gh-navigation" class="gh-navigation is-middle-logo gh-outer">
+    <div class="gh-navigation-inner gh-inner">
+
+        <div class="gh-navigation-brand">
+            <a class="gh-navigation-logo is-title" href="https://highscalability.com">
+                    High Scalability
+            </a>
+            <button class="gh-search gh-icon-button" aria-label="Search this site" data-ghost-search>
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg></button>            <button class="gh-burger gh-icon-button" aria-label="Menu">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 256 256"><path d="M224,128a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,128ZM40,72H216a8,8,0,0,0,0-16H40a8,8,0,0,0,0,16ZM216,184H40a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Z"></path></svg>                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 256 256"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"></path></svg>            </button>
+        </div>
+
+        <nav class="gh-navigation-menu">
+            <ul class="nav">
+    <li class="nav-home nav-current"><a href="https://highscalability.com/">Home</a></li>
+    <li class="nav-system-design-interview-course"><a href="https://bit.ly/hishscalcourse">System Design Interview Course</a></li>
+</ul>
+
+        </nav>
+
+        <div class="gh-navigation-actions">
+                <button class="gh-search gh-icon-button" aria-label="Search this site" data-ghost-search>
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg></button>                <div class="gh-navigation-members">
+                            <a href="#/portal/signin" data-portal="signin">Sign in</a>
+                                <a class="gh-button" href="#/portal/signup" data-portal="signup">Subscribe</a>
+                </div>
+        </div>
+
+    </div>
+</header>
+
+    
+
+    
+
+
+<section class="gh-container is-list gh-outer">
+    <div class="gh-container-inner gh-inner">
+        
+            <h2 class="gh-container-title">
+                Latest
+            </h2>
+
+        <main class="gh-main">
+            <div class="gh-feed">
+
+                                <article class="gh-card post">
+    <a class="gh-card-link" href="/untitled-2/">
+            <figure class="gh-card-image">
+                <img
+                    srcset="/content/images/size/w160/format/webp/2024/05/pasted-image-0-2.png 160w,
+                            /content/images/size/w320/format/webp/2024/05/pasted-image-0-2.png 320w,
+                            /content/images/size/w600/format/webp/2024/05/pasted-image-0-2.png 600w,
+                            /content/images/size/w960/format/webp/2024/05/pasted-image-0-2.png 960w,
+                            /content/images/size/w1200/format/webp/2024/05/pasted-image-0-2.png 1200w,
+                            /content/images/size/w2000/format/webp/2024/05/pasted-image-0-2.png 2000w"
+                    sizes="320px"
+                    src="/content/images/size/w600/2024/05/pasted-image-0-2.png"
+                    alt="Kafka 101"
+                    loading="lazy"
+                >
+            </figure>
+        <div class="gh-card-wrapper">
+            <h3 class="gh-card-title is-title">Kafka 101</h3>
+                    <p class="gh-card-excerpt is-body">This is a guest article by Stanislav Kozlovski, an Apache Kafka Committer. If you would like to connect with Stanislav, you can do so on Twitter and LinkedIn.
+
+Originally developed in LinkedIn during 2011, Apache Kafka is one of the most popular open-source Apache projects out there. So far it</p>
+            <footer class="gh-card-meta">
+<!--
+             -->
+                    <span class="gh-card-author">By HS Editor</span>
+                    <time class="gh-card-date" datetime="2024-05-09">09 May 2024</time>
+                <!--
+         --></footer>
+        </div>
+    </a>
+</article>
+                                <article class="gh-card post">
+    <a class="gh-card-link" href="/capturing-a-billion-emo-j-i-ons/">
+            <figure class="gh-card-image">
+                <img
+                    srcset="/content/images/size/w160/format/webp/2024/03/1-rSRWALA4XzOdDcn-5vv7Zw.gif 160w,
+                            /content/images/size/w320/format/webp/2024/03/1-rSRWALA4XzOdDcn-5vv7Zw.gif 320w,
+                            /content/images/size/w600/format/webp/2024/03/1-rSRWALA4XzOdDcn-5vv7Zw.gif 600w,
+                            /content/images/size/w960/format/webp/2024/03/1-rSRWALA4XzOdDcn-5vv7Zw.gif 960w,
+                            /content/images/size/w1200/format/webp/2024/03/1-rSRWALA4XzOdDcn-5vv7Zw.gif 1200w,
+                            /content/images/size/w2000/format/webp/2024/03/1-rSRWALA4XzOdDcn-5vv7Zw.gif 2000w"
+                    sizes="320px"
+                    src="/content/images/size/w600/2024/03/1-rSRWALA4XzOdDcn-5vv7Zw.gif"
+                    alt="Capturing A Billion Emo(j)i-ons"
+                    loading="lazy"
+                >
+            </figure>
+        <div class="gh-card-wrapper">
+            <h3 class="gh-card-title is-title">Capturing A Billion Emo(j)i-ons</h3>
+                    <p class="gh-card-excerpt is-body">This blog post was written by Dedeepya Bonthu. This is a repost from her Medium article, approved by the author.
+
+In stadiums, sports fans love to express themselves by cheering for their favorite teams, holding up placards and team logos. Emoji’s allow fans at home to rapidly express themselves,</p>
+            <footer class="gh-card-meta">
+<!--
+             -->
+                    <span class="gh-card-author">By HS Editor</span>
+                    <time class="gh-card-date" datetime="2024-03-26">26 Mar 2024</time>
+                <!--
+         --></footer>
+        </div>
+    </a>
+</article>
+                                <article class="gh-card post">
+    <a class="gh-card-link" href="/brief-history-of-scaling-uber/">
+            <figure class="gh-card-image">
+                <img
+                    srcset="/content/images/size/w160/format/webp/2024/03/Screen-Shot-2024-03-14-at-2.19.52-PM.png 160w,
+                            /content/images/size/w320/format/webp/2024/03/Screen-Shot-2024-03-14-at-2.19.52-PM.png 320w,
+                            /content/images/size/w600/format/webp/2024/03/Screen-Shot-2024-03-14-at-2.19.52-PM.png 600w,
+                            /content/images/size/w960/format/webp/2024/03/Screen-Shot-2024-03-14-at-2.19.52-PM.png 960w,
+                            /content/images/size/w1200/format/webp/2024/03/Screen-Shot-2024-03-14-at-2.19.52-PM.png 1200w,
+                            /content/images/size/w2000/format/webp/2024/03/Screen-Shot-2024-03-14-at-2.19.52-PM.png 2000w"
+                    sizes="320px"
+                    src="/content/images/size/w600/2024/03/Screen-Shot-2024-03-14-at-2.19.52-PM.png"
+                    alt="Brief History of Scaling Uber"
+                    loading="lazy"
+                >
+            </figure>
+        <div class="gh-card-wrapper">
+            <h3 class="gh-card-title is-title">Brief History of Scaling Uber</h3>
+                    <p class="gh-card-excerpt is-body">This blog post was written by Josh Clemm, Senior Director of Engineering at Uber Eats. This is a repost from his LinkedIn article, approved by the author.
+
+On a cold evening in Paris in 2008, Travis Kalanick and Garrett Camp couldn&#39;t get a cab. That&#39;s when</p>
+            <footer class="gh-card-meta">
+<!--
+             -->
+                    <span class="gh-card-author">By HS Editor</span>
+                    <time class="gh-card-date" datetime="2024-03-14">14 Mar 2024</time>
+                <!--
+         --></footer>
+        </div>
+    </a>
+</article>
+                                <article class="gh-card post">
+    <a class="gh-card-link" href="/behind-aws-s3s-massive-scale/">
+            <figure class="gh-card-image">
+                <img
+                    srcset="/content/images/size/w160/format/webp/2024/03/7.png 160w,
+                            /content/images/size/w320/format/webp/2024/03/7.png 320w,
+                            /content/images/size/w600/format/webp/2024/03/7.png 600w,
+                            /content/images/size/w960/format/webp/2024/03/7.png 960w,
+                            /content/images/size/w1200/format/webp/2024/03/7.png 1200w,
+                            /content/images/size/w2000/format/webp/2024/03/7.png 2000w"
+                    sizes="320px"
+                    src="/content/images/size/w600/2024/03/7.png"
+                    alt="Behind AWS S3’s Massive Scale"
+                    loading="lazy"
+                >
+            </figure>
+        <div class="gh-card-wrapper">
+            <h3 class="gh-card-title is-title">Behind AWS S3’s Massive Scale</h3>
+                    <p class="gh-card-excerpt is-body">This is a guest article by Stanislav Kozlovski, an Apache Kafka Committer. If you would like to connect with Stanislav, you can do so on Twitter and LinkedIn.
+
+AWS S3 is a service every engineer is familiar with.
+
+It’s the service that popularized the notion of cold-storage to the</p>
+            <footer class="gh-card-meta">
+<!--
+             -->
+                    <span class="gh-card-author">By HS Editor</span>
+                    <time class="gh-card-date" datetime="2024-03-06">06 Mar 2024</time>
+                <!--
+         --></footer>
+        </div>
+    </a>
+</article>
+                                <article class="gh-card post no-image">
+    <a class="gh-card-link" href="/the-swedbank-outage-shows-that-change-controls-dont-work/">
+        <div class="gh-card-wrapper">
+            <h3 class="gh-card-title is-title">The Swedbank Outage shows that Change Controls don&#x27;t work</h3>
+                    <p class="gh-card-excerpt is-body">This week I’ve been reading through the recent judgment from the Swedish FSA on the Swedbank outage. If you’re unfamiliar with this story, Swedbank had a major outage in April 2022 that was caused by an unapproved change to their IT systems. It temporarily left nearly a million</p>
+            <footer class="gh-card-meta">
+<!--
+             -->
+                    <span class="gh-card-author">By Bruce Johnston</span>
+                    <time class="gh-card-date" datetime="2023-08-16">16 Aug 2023</time>
+                <!--
+         --></footer>
+        </div>
+    </a>
+</article>
+                                <article class="gh-card post no-image">
+    <a class="gh-card-link" href="/lessons-learned-running-presto-at-meta-scale/">
+        <div class="gh-card-wrapper">
+            <h3 class="gh-card-title is-title">Lessons Learned Running Presto at Meta Scale</h3>
+                    <p class="gh-card-excerpt is-body">Presto is a free, open source SQL query engine. We’ve been using it at Meta for the past ten years, and learned a lot while doing so. Running anything at scale - tools, processes, services - takes problem solving to overcome unexpected challenges. Here are four things we learned</p>
+            <footer class="gh-card-meta">
+<!--
+             -->
+                    <span class="gh-card-author">By Philip Bell</span>
+                    <time class="gh-card-date" datetime="2023-07-16">16 Jul 2023</time>
+                <!--
+         --></footer>
+        </div>
+    </a>
+</article>
+                                <article class="gh-card post no-image">
+    <a class="gh-card-link" href="/gossip-protocol-explained/">
+        <div class="gh-card-wrapper">
+            <h3 class="gh-card-title is-title">Gossip Protocol Explained</h3>
+                    <p class="gh-card-excerpt is-body">You can subscribe to the system design newsletter to excel in system design interviews and software architecture. The original article was published on systemdesign.one website.
+
+
+
+
+
+What Is Gossip Protocol?
+
+The typical problems in a distributed system are the following [1], [11]:
+
+ * maintaining the system state (liveness of nodes)
+ * communication</p>
+            <footer class="gh-card-meta">
+<!--
+             -->
+                    <span class="gh-card-author">By NK</span>
+                    <time class="gh-card-date" datetime="2023-07-16">16 Jul 2023</time>
+                <!--
+         --></footer>
+        </div>
+    </a>
+</article>
+                                <article class="gh-card post no-image">
+    <a class="gh-card-link" href="/consistent-hashing-algorithm/">
+        <div class="gh-card-wrapper">
+            <h3 class="gh-card-title is-title">Consistent hashing algorithm</h3>
+                    <p class="gh-card-excerpt is-body">You can subscribe to the system design newsletter to excel in system design interviews and software architecture.
+
+You can view the original article Consistent hashing explained on systemdesign.one website.
+
+
+How does consistent hashing work?
+
+At a high level, consistent hashing performs the following operations:
+
+ 1. The output of the</p>
+            <footer class="gh-card-meta">
+<!--
+             -->
+                    <span class="gh-card-author">By NK</span>
+                    <time class="gh-card-date" datetime="2023-02-22">22 Feb 2023</time>
+                <!--
+         --></footer>
+        </div>
+    </a>
+</article>
+                                <article class="gh-card post no-image">
+    <a class="gh-card-link" href="/what-is-cloud-computing-according-to-chatgpt/">
+        <div class="gh-card-wrapper">
+            <h3 class="gh-card-title is-title">What is Cloud Computing? According to ChatGPT.</h3>
+                    <p class="gh-card-excerpt is-body">DALL-E picture generated from the answer.
+
+I was curious, given all the ChatGPT love, what it would make of some of our favorite topics. I was both impressed and unimpressed.
+
+Impressed. ChatGPT instantly generated an response that might make a good answer in a Miss Universe contest. You know, the</p>
+            <footer class="gh-card-meta">
+<!--
+             -->
+                    <span class="gh-card-author">By High Scalability</span>
+                    <time class="gh-card-date" datetime="2022-12-16">16 Dec 2022</time>
+                <!--
+         --></footer>
+        </div>
+    </a>
+</article>
+                                <article class="gh-card post no-image">
+    <a class="gh-card-link" href="/stuff-the-internet-says-on-scalability-for-december-2nd-2022/">
+        <div class="gh-card-wrapper">
+            <h3 class="gh-card-title is-title">Stuff The Internet Says On Scalability For December 2nd, 2022</h3>
+                    <p class="gh-card-excerpt is-body">Never fear, HighScalability is here!
+
+1958: An engineer wiring an early IBM computer 2021: An engineer wiring an early IBM quantum computer. @enclanglement
+
+
+My Stuff:
+
+ * I&#39;m proud to announce a completely updated and expanded version of Explain the Cloud Like I&#39;m 10! This version adds 2x</p>
+            <footer class="gh-card-meta">
+<!--
+             -->
+                    <span class="gh-card-author">By High Scalability</span>
+                    <time class="gh-card-date" datetime="2022-12-02">02 Dec 2022</time>
+                <!--
+         --></footer>
+        </div>
+    </a>
+</article>
+                                <article class="gh-card post no-image">
+    <a class="gh-card-link" href="/the-cloud-is-not-a-railroad-an-argument-against-the-vertical/">
+        <div class="gh-card-wrapper">
+            <h3 class="gh-card-title is-title">The Cloud is Not a Railroad - An Argument Against the Vertical Separation of Cloud Providers</h3>
+                    <p class="gh-card-excerpt is-body">There&#39;s a move to regulate cloud providers by vertically separating the services they offer.
+
+Like railroads of yore, who were not allowed to provide freight services on top of their base services, cloud providers would not be allowed to provide services on top of their base platform services.</p>
+            <footer class="gh-card-meta">
+<!--
+             -->
+                    <span class="gh-card-author">By High Scalability</span>
+                    <time class="gh-card-date" datetime="2022-10-24">24 Oct 2022</time>
+                <!--
+         --></footer>
+        </div>
+    </a>
+</article>
+                                <article class="gh-card post no-image">
+    <a class="gh-card-link" href="/sponsored-post-g-core-labs-close-wynter-pinecone-kinsta-brid-65bcda83ffae163275932644/">
+        <div class="gh-card-wrapper">
+            <h3 class="gh-card-title is-title">Sponsored Post: G-Core Labs, Close, Wynter, Pinecone, Kinsta, Bridgecrew, IP2Location, StackHawk, InterviewCamp.io, Educative, Stream, Fauna, Triplebyte</h3>
+                    <p class="gh-card-excerpt is-body">Who&#39;s Hiring?
+
+ * Close is building the sales communication platform of the future and we&#39;re looking for a Site Reliability Engineer to help us accomplish that goal. If you have a passion for databases (both SQL and NoSQL), significant experience building, managing, and monitoring infrastructure, databases, and</p>
+            <footer class="gh-card-meta">
+<!--
+             -->
+                    <span class="gh-card-author">By High Scalability</span>
+                    <time class="gh-card-date" datetime="2022-07-18">18 Jul 2022</time>
+                <!--
+         --></footer>
+        </div>
+    </a>
+</article>
+                    
+
+
+            </div>
+
+                <div class="gh-more is-title">
+                    <a href="https://highscalability.com/page/2/">See all <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" viewBox="0 0 256 256"><path d="M224.49,136.49l-72,72a12,12,0,0,1-17-17L187,140H40a12,12,0,0,1,0-24H187L135.51,64.48a12,12,0,0,1,17-17l72,72A12,12,0,0,1,224.49,136.49Z"></path></svg></a>
+                </div>
+        </main>
+
+
+    </div>
+</section>
+
+    
+    <footer class="gh-footer gh-outer">
+    <div class="gh-footer-inner gh-inner">
+
+        <div class="gh-footer-bar">
+            <span class="gh-footer-logo is-title">
+                    High Scalability
+            </span>
+            <nav class="gh-footer-menu">
+                <ul class="nav">
+    <li class="nav-sign-up nav-current"><a href="#/portal/">Sign up</a></li>
+</ul>
+
+            </nav>
+            <div class="gh-footer-copyright">
+                Powered by <a href="https://ghost.org/" target="_blank" rel="noopener">Ghost</a>
+            </div>
+        </div>
+
+                <section class="gh-footer-signup">
+                    <h2 class="gh-footer-signup-header is-title">
+                        High Scalability
+                    </h2>
+                    <p class="gh-footer-signup-subhead is-body">
+                        Building bigger, faster, more reliable websites.
+                    </p>
+                    <form class="gh-form" data-members-form>
+    <input class="gh-form-input" id="footer-email" name="email" type="email" placeholder="jamie@example.com" required data-members-email>
+    <button class="gh-button" type="submit" aria-label="Subscribe">
+        <span><span>Subscribe</span> <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" viewBox="0 0 256 256"><path d="M224.49,136.49l-72,72a12,12,0,0,1-17-17L187,140H40a12,12,0,0,1,0-24H187L135.51,64.48a12,12,0,0,1,17-17l72,72A12,12,0,0,1,224.49,136.49Z"></path></svg></span>
+        <svg xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 0 24 24">
+    <g stroke-linecap="round" stroke-width="2" fill="currentColor" stroke="none" stroke-linejoin="round" class="nc-icon-wrapper">
+        <g class="nc-loop-dots-4-24-icon-o">
+            <circle cx="4" cy="12" r="3"></circle>
+            <circle cx="12" cy="12" r="3"></circle>
+            <circle cx="20" cy="12" r="3"></circle>
+        </g>
+        <style data-cap="butt">
+            .nc-loop-dots-4-24-icon-o{--animation-duration:0.8s}
+            .nc-loop-dots-4-24-icon-o *{opacity:.4;transform:scale(.75);animation:nc-loop-dots-4-anim var(--animation-duration) infinite}
+            .nc-loop-dots-4-24-icon-o :nth-child(1){transform-origin:4px 12px;animation-delay:-.3s;animation-delay:calc(var(--animation-duration)/-2.666)}
+            .nc-loop-dots-4-24-icon-o :nth-child(2){transform-origin:12px 12px;animation-delay:-.15s;animation-delay:calc(var(--animation-duration)/-5.333)}
+            .nc-loop-dots-4-24-icon-o :nth-child(3){transform-origin:20px 12px}
+            @keyframes nc-loop-dots-4-anim{0%,100%{opacity:.4;transform:scale(.75)}50%{opacity:1;transform:scale(1)}}
+        </style>
+    </g>
+</svg>        <span>Email sent</span>
+    </button>
+    <p data-members-error></p>
+</form>
+                </section>
+
+    </div>
+</footer>    
+</div>
+
+
+<script src="https://highscalability.com/assets/built/source.js?v=906dc06537"></script>
+
+
+
+</body>
+</html>

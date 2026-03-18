@@ -11,15 +11,19 @@ passlib[bcrypt]
 
 # PDF Reading — extracts text from uploaded resumes
 pymupdf
+python-docx
+beautifulsoup4
 
 # LangChain Core — the orchestration framework
 langchain
 langchain-core
 langchain-community
+langchain-text-splitters
 
 # LangChain — LLM & Embeddings integration
 langchain-google-genai
 langchain-groq
+langchain-huggingface   # local embeddings — no API key, no rate limits
 
 # LangChain — ChromaDB vector store integration
 langchain-chroma

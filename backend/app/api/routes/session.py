@@ -22,12 +22,14 @@ THE FLOW (for frontend to follow):
   4. When session_complete=True → navigate to /report page
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends
 from sqlmodel import Session
 from pydantic import BaseModel
 from typing import Optional
 
+from app.api.error_utils import api_error
 from app.db.database import get_db
+from app.models.resume import Resume
 from app.models.session import InterviewType
 from app.services import session_service
 
@@ -94,9 +96,36 @@ def create_session(
       Ideally a resume_id should be provided so the AI can personalize
       questions based on the candidate's actual projects and skills.
     """
+    if not request.guest_id or not request.guest_id.strip():
+        raise api_error(status_code=400, code="MISSING_GUEST_ID", message="guest_id is required")
+
+    if request.interview_type == InterviewType.RESUME and request.resume_id is None:
+        raise api_error(
+            status_code=400,
+            code="MISSING_RESUME_ID",
+            message="resume_id is required for resume interview type",
+        )
+
+    if request.resume_id is not None:
+        resume = db.get(Resume, request.resume_id)
+        if not resume:
+            raise api_error(
+                status_code=404,
+                code="RESUME_NOT_FOUND",
+                message=f"Resume {request.resume_id} not found",
+                context={"resume_id": request.resume_id},
+            )
+        if resume.guest_id != request.guest_id:
+            raise api_error(
+                status_code=403,
+                code="RESUME_GUEST_MISMATCH",
+                message="resume_id does not belong to the provided guest_id",
+                context={"resume_id": request.resume_id, "guest_id": request.guest_id},
+            )
+
     try:
         session = session_service.create_session(
-            guest_id=request.guest_id,
+            guest_id=request.guest_id.strip(),
             interview_type=request.interview_type.value,
             resume_id=request.resume_id,
             db=db,
@@ -112,7 +141,11 @@ def create_session(
             ),
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create session: {str(e)}")
+        raise api_error(
+            status_code=500,
+            code="SESSION_CREATE_FAILED",
+            message=f"Failed to create session: {str(e)}",
+        )
 
 
 @router.get("/{session_id}/start")
@@ -134,19 +167,29 @@ async def start_session(
     session = db.get(InterviewSession, session_id)
 
     if not session:
-        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+        raise api_error(
+            status_code=404,
+            code="SESSION_NOT_FOUND",
+            message=f"Session {session_id} not found",
+            context={"session_id": session_id},
+        )
 
     if session.question_count > 0:
-        raise HTTPException(
+        raise api_error(
             status_code=400,
-            detail="Session already started. Use POST /message to continue."
+            code="SESSION_ALREADY_STARTED",
+            message="Session already started. Use POST /message to continue.",
         )
 
     try:
         result = await session_service.get_first_question(session=session, db=db)
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate first question: {str(e)}")
+        raise api_error(
+            status_code=500,
+            code="FIRST_QUESTION_FAILED",
+            message=f"Failed to generate first question: {str(e)}",
+        )
 
 
 @router.get("/{session_id}")
@@ -161,7 +204,12 @@ def get_session(
     try:
         return session_service.get_session_detail(session_id=session_id, db=db)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise api_error(
+            status_code=404,
+            code="SESSION_NOT_FOUND",
+            message=str(e),
+            context={"session_id": session_id},
+        )
 
 
 @router.post("/{session_id}/message", response_model=SendMessageResponse)
@@ -186,7 +234,11 @@ async def send_message(
     FastAPI can handle other requests while waiting for Groq to respond!
     """
     if not request.content or not request.content.strip():
-        raise HTTPException(status_code=400, detail="Answer content cannot be empty")
+        raise api_error(
+            status_code=400,
+            code="EMPTY_ANSWER",
+            message="Answer content cannot be empty",
+        )
 
     try:
         result = await session_service.process_message(
@@ -201,9 +253,19 @@ async def send_message(
             evaluation=EvaluationResult(**result["evaluation"]) if result.get("evaluation") else None,
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise api_error(
+            status_code=400,
+            code="SESSION_MESSAGE_INVALID",
+            message=str(e),
+            context={"session_id": session_id},
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Interview pipeline error: {str(e)}")
+        raise api_error(
+            status_code=500,
+            code="SESSION_PIPELINE_ERROR",
+            message=f"Interview pipeline error: {str(e)}",
+            context={"session_id": session_id},
+        )
 
 
 @router.post("/{session_id}/end")
@@ -222,7 +284,12 @@ def end_session(
 
     session = db.get(InterviewSession, session_id)
     if not session:
-        raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
+        raise api_error(
+            status_code=404,
+            code="SESSION_NOT_FOUND",
+            message=f"Session {session_id} not found",
+            context={"session_id": session_id},
+        )
 
     session.status = SessionStatus.COMPLETED
     session.ended_at = datetime.utcnow()

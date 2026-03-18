@@ -45,9 +45,11 @@ INTERVIEW PROGRESS: Question {question_number} of 8
 RESUME_HUMAN = """The candidate just answered:
 "{user_answer}"
 
-Ask the next question that dives deeper into their resume.
-If this is question 1, introduce yourself and pick the most interesting project
-or experience from their resume to start with. Reference it by name.
+This is question {question_number} of 8.
+
+STRICT FORMATTING RULE:
+- If question_number is 1: introduce yourself with one sentence, then pick the most interesting project or experience from their resume and ask about it by name.
+- If question_number is 2 or higher: output ONLY the next question. No greeting. No "Hi". No self-introduction. Start directly with the question.
 """
 
 resume_interview_prompt = ChatPromptTemplate.from_messages([

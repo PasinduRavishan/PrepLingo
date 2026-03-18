@@ -2,10 +2,11 @@
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlmodel import Session
 
+from app.api.error_utils import api_error
 from app.db.database import get_db
 from app.services import report_service
 
@@ -53,6 +54,17 @@ def get_report(
     except ValueError as e:
       detail = str(e)
       status_code = 404 if "not found" in detail.lower() else 400
-      raise HTTPException(status_code=status_code, detail=detail)
+      error_code = "REPORT_SESSION_NOT_FOUND" if status_code == 404 else "REPORT_INVALID_REQUEST"
+      raise api_error(
+          status_code=status_code,
+          code=error_code,
+          message=detail,
+          context={"session_id": session_id},
+      )
     except Exception as e:
-      raise HTTPException(status_code=500, detail=f"Failed to generate report: {str(e)}")
+      raise api_error(
+          status_code=500,
+          code="REPORT_GENERATION_FAILED",
+          message=f"Failed to generate report: {str(e)}",
+          context={"session_id": session_id},
+      )

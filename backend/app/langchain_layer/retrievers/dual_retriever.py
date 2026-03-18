@@ -32,7 +32,7 @@ QUERY STRATEGY:
   This ensures retrieved chunks are RELEVANT to the current conversation moment.
 """
 
-from langchain.retrievers import MergerRetriever
+from langchain_core.runnables import RunnableLambda
 from app.langchain_layer.vector_store.store_manager import (
     get_knowledge_retriever,
     get_resume_retriever,
@@ -42,8 +42,8 @@ from app.langchain_layer.vector_store.store_manager import (
 def build_dual_retriever(
     guest_id: str,
     interview_type: str,
-    k_knowledge: int = 3,
-    k_resume: int = 2,
+    k_knowledge: int = 2,
+    k_resume: int = 1,
 ):
     """
     Build the dual retriever for an interview session.
@@ -57,7 +57,7 @@ def build_dual_retriever(
         k_resume: How many resume chunks to retrieve per turn
     
     Returns:
-        MergerRetriever — can be used exactly like a single retriever:
+        Runnable retriever — can be used like a single retriever:
         results = dual_retriever.invoke("your query")
     
     Example output documents:
@@ -74,8 +74,22 @@ def build_dual_retriever(
         interview_type=interview_type, k=k_knowledge
     )
 
-    # MergerRetriever = run both, combine results into one list
-    return MergerRetriever(retrievers=[resume_retriever, knowledge_retriever])
+    def _merged_retrieve(query: str):
+        # Keep retrieval resilient across LangChain versions by composing results here.
+        resume_docs = resume_retriever.invoke(query)
+        knowledge_docs = knowledge_retriever.invoke(query)
+
+        # Interleave docs so resume context and knowledge context are both represented.
+        merged = []
+        max_len = max(len(resume_docs), len(knowledge_docs))
+        for i in range(max_len):
+            if i < len(resume_docs):
+                merged.append(resume_docs[i])
+            if i < len(knowledge_docs):
+                merged.append(knowledge_docs[i])
+        return merged
+
+    return RunnableLambda(_merged_retrieve)
 
 
 def format_retrieved_docs(docs: list) -> str:
@@ -97,9 +111,13 @@ def format_retrieved_docs(docs: list) -> str:
     if not docs:
         return "No relevant context found."
 
+    MAX_DOC_CHARS = 700
     formatted = []
     for doc in docs:
         source = doc.metadata.get("source", "unknown")
-        formatted.append(f"--- Source: {source} ---\n{doc.page_content}")
+        content = (doc.page_content or "").strip()
+        if len(content) > MAX_DOC_CHARS:
+            content = content[:MAX_DOC_CHARS] + " ..."
+        formatted.append(f"--- Source: {source} ---\n{content}")
 
     return "\n\n".join(formatted)

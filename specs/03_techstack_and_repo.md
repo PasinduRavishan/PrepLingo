@@ -1,186 +1,142 @@
 # SPEC 03 — Tech Stack & Repository Structure
 
-**Status:** Draft — Pending Decisions
+**Status:** Updated — Reflects Phase 5 implementation (2026-03-17)
 
 ---
 
-## Tech Stack (Proposed)
+## Tech Stack (Current Implementation)
 
 ### Backend
-| Layer | Technology | Why |
+| Layer | Technology | Notes |
 |---|---|---|
 | Web Framework | **FastAPI** (Python 3.11+) | Async-native, auto OpenAPI docs, Pydantic-first |
 | AI Orchestration | **LangChain** (LCEL) | Chains, retrievers, memory, prompt templates |
-| LLM Provider | **TBD** (see Decisions) | — |
-| Embeddings | **TBD** (see Decisions) | — |
-| Vector Store | **TBD** (see Decisions) | — |
+| LLM Provider | **Groq** (`llama-3.1-8b-instant`) | Fast inference, free tier, no quota issues |
+| Embeddings | **BAAI/bge-base-en-v1.5** (local HuggingFace) | 768 dims, MTEB 72.3, no API key, no rate limits |
+| Vector Store | **ChromaDB** | Persistent, metadata filtering, LangChain native |
 | PDF Parsing | **PyMuPDF** (fitz) | Fast, reliable, Python-native |
 | ORM | **SQLModel** | Built for FastAPI, Pydantic models = DB models |
 | Database | **SQLite** (dev) → PostgreSQL (prod) | Zero setup for dev |
-| Auth | **python-jose** + **passlib** (bcrypt) | JWT implementation |
 | Server | **Uvicorn** | ASGI server for FastAPI |
-| Package Mgr | **pip** + **requirements.txt** or **Poetry** | TBD |
+| Package Mgr | **pip** + **requirements.txt** | Standard Python packaging |
 
 ### Frontend
-| Layer | Technology | Why |
+| Layer | Technology | Notes |
 |---|---|---|
-| Framework | **Next.js 14** (App Router) | File-based routing, SSR, React ecosystem |
-| Language | **TypeScript** | Type safety, better DX |
-| Styling | **Tailwind CSS** | Rapid UI, utility-first |
-| State Management | **Zustand** | Simple, lightweight, no boilerplate |
-| HTTP Client | **Axios** | Auto JSON, interceptors for auth |
-| UI Components | **shadcn/ui** | Pre-built accessible components |
-| Chat UI | Custom component | Real interview feel |
-| Charts (Reports) | **Recharts** | Score visualization (radar chart) |
+| Framework | **Streamlit** | Single-file Python app, no build pipeline |
+| HTTP Client | **requests** | Calls FastAPI backend directly |
+| Charts | **pandas + st.bar_chart** | Score visualization in final report |
+| Styling | Custom CSS via `st.markdown` | Professional light theme with injected CSS |
 
-### Infrastructure (Local Dev)
+### Infrastructure
 | Component | Tool |
 |---|---|
 | Version Control | Git + GitHub |
-| Env Vars | `.env` files (python-dotenv / Next.js .env.local) |
+| Env Vars | `.env` (python-dotenv via pydantic-settings) |
 | API Docs | FastAPI auto-generates Swagger at `/docs` |
-| Knowledge Base Ingestion | Python script (`scripts/ingest_knowledge.py`) |
+| Knowledge Ingestion | `backend/scripts/ingest_knowledge.py` |
+| Containerization | Docker multi-stage build + docker-compose.yml |
 
 ---
 
-## Repository Structure
+## Repository Structure (Current)
 
 ```
 PrepLingo/
 │
-├── specs/                          ← All spec documents (this folder)
+├── specs/                          ← All spec documents
 │   ├── 00_project_overview.md
 │   ├── 01_architecture.md
 │   ├── 02_rag_design.md
-│   ├── 03_techstack_and_repo.md
+│   ├── 03_techstack_and_repo.md    ← This file
 │   ├── 04_data_models.md
-│   ├── 05_api_contracts.md
-│   ├── 06_langchain_chains.md
-│   └── 07_frontend_pages.md
+│   ├── 05_langchain_chains.md
+│   ├── 06_phase2_resume_pipeline.md
+│   ├── 07_phase3_session_service.md
+│   ├── 08_phase4_report_service.md
+│   ├── 09_phase5_guest_mvp_hardening.md
+│   ├── 10_manual_qa_checklist.md
+│   ├── 11_testing_flow_guide.md
+│   ├── 12_frontend_architecture_and_ux_plan.md
+│   ├── 13_rag_knowledge_ingestion_and_content_plan.md
+│   ├── 14_day_wise_worklog.md
+│   └── DECISIONS.md
 │
 ├── backend/                        ← FastAPI + LangChain
 │   │
 │   ├── app/
 │   │   ├── main.py                 ← FastAPI app entry point
-│   │   ├── config.py               ← Settings (env vars, LLM config)
+│   │   ├── config.py               ← Settings (env vars, model config) via pydantic-settings
 │   │   │
 │   │   ├── api/
+│   │   │   ├── error_utils.py      ← Unified api_error() helper
 │   │   │   └── routes/
-│   │   │       ├── auth.py         ← /auth/register, /auth/login
-│   │   │       ├── resume.py       ← /resume/upload, /resume/parse
-│   │   │       ├── session.py      ← /session (CRUD + chat)
-│   │   │       └── report.py       ← /report/{session_id}
+│   │   │       ├── resume.py       ← /api/resume/upload, /api/resume/{id}/status, etc.
+│   │   │       ├── session.py      ← /api/session/ CRUD + /start + /message + /end
+│   │   │       └── report.py       ← /api/report/{session_id}
 │   │   │
 │   │   ├── services/               ← Business logic (no LangChain here)
-│   │   │   ├── auth_service.py
-│   │   │   ├── resume_service.py
-│   │   │   ├── session_service.py
-│   │   │   ├── eval_service.py
-│   │   │   └── report_service.py
+│   │   │   ├── resume_service.py   ← parse_resume_with_llm(), embed_resume_for_rag()
+│   │   │   ├── session_service.py  ← SessionService: orchestrates interview loop
+│   │   │   └── report_service.py   ← ReportService: aggregates evaluations → report
 │   │   │
 │   │   ├── langchain_layer/        ← ALL LangChain/AI code lives here
 │   │   │   │
 │   │   │   ├── chains/
-│   │   │   │   ├── question_chain.py    ← Generates next interview question
-│   │   │   │   └── evaluation_chain.py  ← Scores user's answer
+│   │   │   │   ├── question_chain.py    ← Generates next interview question (LCEL)
+│   │   │   │   └── evaluation_chain.py  ← Scores user's answer (JsonOutputParser)
 │   │   │   │
 │   │   │   ├── prompts/            ← Prompt templates per interview type
-│   │   │   │   ├── base_prompt.py
-│   │   │   │   ├── resume_interview_prompt.py
 │   │   │   │   ├── technical_prompt.py
+│   │   │   │   ├── resume_interview_prompt.py
 │   │   │   │   ├── system_design_prompt.py
 │   │   │   │   └── behavioral_prompt.py
 │   │   │   │
 │   │   │   ├── retrievers/
-│   │   │   │   └── dual_retriever.py    ← Resume + Knowledge dual retrieval
+│   │   │   │   └── dual_retriever.py    ← Resume chunks + Knowledge chunks
 │   │   │   │
 │   │   │   ├── memory/
-│   │   │   │   └── session_memory.py    ← Conversation buffer per session
+│   │   │   │   └── session_memory.py    ← ConversationBufferWindowMemory per session
 │   │   │   │
 │   │   │   └── vector_store/
-│   │   │       ├── store_manager.py     ← Init/load vector store
-│   │   │       └── ingestion.py         ← Chunk + embed + store
+│   │   │       └── store_manager.py     ← ChromaDB init + HuggingFace embeddings
 │   │   │
-│   │   ├── models/                 ← SQLModel DB models
-│   │   │   ├── user.py
-│   │   │   ├── session.py
-│   │   │   ├── message.py
-│   │   │   ├── evaluation.py
-│   │   │   └── report.py
+│   │   ├── models/                 ← SQLModel DB table definitions
 │   │   │
 │   │   └── db/
-│   │       └── database.py         ← SQLite connection + engine
+│   │       └── database.py         ← SQLite engine + session factory
 │   │
-│   ├── knowledge_base/             ← Raw documents for RAG ingestion
+│   ├── knowledge_base/             ← Curated markdown docs for RAG ingestion
 │   │   ├── technical/
-│   │   │   ├── databases.md
-│   │   │   ├── backend_concepts.md
-│   │   │   ├── data_structures.md
-│   │   │   ├── networking.md
-│   │   │   └── language_specific/
-│   │   │       ├── python.md
-│   │   │       ├── javascript.md
-│   │   │       └── java.md
-│   │   │
 │   │   ├── system_design/
-│   │   │   ├── patterns/
-│   │   │   │   ├── caching.md
-│   │   │   │   ├── load_balancing.md
-│   │   │   │   └── api_design.md
-│   │   │   └── case_studies/
-│   │   │       ├── url_shortener.md
-│   │   │       ├── messaging_system.md
-│   │   │       └── social_feed.md
-│   │   │
 │   │   ├── behavioral/
-│   │   │   ├── star_method.md
-│   │   │   ├── common_questions.md
-│   │   │   └── leadership_principles.md
-│   │   │
 │   │   └── resume_interview/
-│   │       ├── project_questions.md
-│   │       └── techstack_deepdive.md
+│   │
+│   ├── knowledge_raw/              ← Auto-collected HTML/PDF sources (gitignored)
+│   │   └── seed_sources.json       ← URLs for knowledge collection script
 │   │
 │   ├── scripts/
-│   │   └── ingest_knowledge.py     ← Run once: embed all docs → vector store
+│   │   ├── ingest_knowledge.py          ← Embed all docs → ChromaDB
+│   │   ├── collect_knowledge_sources.py ← Auto-download from seed URLs
+│   │   ├── test_phase2_resume.py
+│   │   ├── test_phase3_session.py
+│   │   ├── test_phase4_report.py
+│   │   ├── test_phase5_edge_cases.py
+│   │   └── test_phase5_pdf_relevance.py
 │   │
-│   ├── vector_store_data/          ← FAISS/ChromaDB persisted index (gitignored)
+│   ├── vector_store_data/          ← ChromaDB persisted index (gitignored)
 │   │
-│   ├── .env                        ← API keys, DB URL (gitignored)
-│   ├── .env.example                ← Template for env vars (committed)
+│   ├── Dockerfile                  ← Multi-stage: pre-downloads BAAI model at build time
+│   ├── .env                        ← API keys, DB config (gitignored)
+│   ├── .env.example                ← Template (committed)
 │   └── requirements.txt
 │
-├── frontend/                       ← Next.js App
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── page.tsx            ← Landing page
-│   │   │   ├── layout.tsx
-│   │   │   ├── dashboard/
-│   │   │   │   └── page.tsx        ← Upload resume, pick interview type
-│   │   │   ├── interview/
-│   │   │   │   └── [sessionId]/
-│   │   │   │       └── page.tsx    ← Live interview chat
-│   │   │   └── report/
-│   │   │       └── [sessionId]/
-│   │   │           └── page.tsx    ← Final score + feedback
-│   │   │
-│   │   ├── components/
-│   │   │   ├── ChatMessage.tsx     ← Single chat bubble
-│   │   │   ├── ChatInterface.tsx   ← Full interview chat area
-│   │   │   ├── ResumeUploader.tsx  ← File drag-and-drop upload
-│   │   │   ├── InterviewTypeCard.tsx ← Mode selection card
-│   │   │   └── ScoreRadarChart.tsx ← Report score visualization
-│   │   │
-│   │   ├── store/
-│   │   │   ├── useSessionStore.ts  ← Zustand: session state
-│   │   │   └── useAuthStore.ts     ← Zustand: auth/user state
-│   │   │
-│   │   └── services/
-│   │       └── api.ts              ← Axios client + all API calls
-│   │
-│   ├── .env.local                  ← NEXT_PUBLIC_API_URL (gitignored)
-│   └── package.json
+├── frontend_streamlit/             ← Streamlit frontend (MVP)
+│   ├── app.py                      ← Single-file Streamlit app
+│   └── .streamlit/
+│       └── config.toml             ← Light theme config
 │
+├── docker-compose.yml              ← Orchestrates backend with volume persistence
 ├── .gitignore
 └── README.md
 ```
@@ -190,30 +146,39 @@ PrepLingo/
 ## Key Design Rules
 
 1. **LangChain code stays inside `langchain_layer/`** — services call langchain_layer, never import LangChain directly elsewhere
-2. **One chain per responsibility** — `QuestionChain` and `EvaluationChain` are separate
-3. **Prompts are versioned files** — no inline prompt strings anywhere
-4. **Knowledge base docs are human-readable** — `.md` files you can edit and understand
-5. **Vector store data is gitignored** — always regenerated from the source `.md` files
+2. **One chain per responsibility** — `QuestionChain` and `EvaluationChain` are separate LCEL chains
+3. **Prompts are versioned files** — one file per interview type in `prompts/`, no inline prompt strings
+4. **Embedding model is locked to ChromaDB** — changing it requires a full reset + re-ingestion
+5. **Knowledge base docs are human-readable** — `.md` files you can edit and understand
+6. **Vector store data is gitignored** — always regenerated from source `.md` files via `ingest_knowledge.py`
+7. **Error responses use unified shape** — `api_error()` in `error_utils.py` for all routes
 
 ---
 
-## Environment Variables (.env.example)
+## Environment Variables (`.env`)
 
 ```bash
-# LLM
-OPENAI_API_KEY=sk-...          # Or GOOGLE_API_KEY for Gemini
+# Required
+GROQ_API_KEY=gsk_YOUR_KEY_HERE       # console.groq.com/keys (free)
+
+# Optional (not needed since embeddings are local)
+# GOOGLE_API_KEY only needed if you add Gemini-based resume parsing
+GOOGLE_API_KEY=AIza_YOUR_KEY_HERE
+
+# Model selection
+GROQ_MODEL=llama-3.1-8b-instant       # or llama-3.3-70b-versatile for better quality
+EMBEDDING_MODEL=BAAI/bge-base-en-v1.5  # DO NOT change without resetting ChromaDB
 
 # Database
-DATABASE_URL=sqlite:///./preplingo.db
+DATABASE_URL=sqlite:///./preplingo.db  # Dev: SQLite; Prod: postgresql://...
 
-# Auth
-JWT_SECRET_KEY=your_secret_here
+# Auth (JWT — deferred to Phase 6)
+JWT_SECRET_KEY=change-this-in-production
 JWT_ALGORITHM=HS256
-JWT_EXPIRE_MINUTES=60
+JWT_EXPIRE_MINUTES=1440
 
-# Vector Store
+# Storage
 VECTOR_STORE_PATH=./vector_store_data
-EMBEDDING_MODEL=text-embedding-3-small   # Or local model name
 
 # App
 APP_ENV=development

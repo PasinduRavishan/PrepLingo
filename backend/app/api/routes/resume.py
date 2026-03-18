@@ -7,16 +7,33 @@ ENDPOINTS:
 """
 
 import json
-from fastapi import APIRouter, File, UploadFile, HTTPException, Depends, Query
+from fastapi import APIRouter, File, UploadFile, Depends, Query, BackgroundTasks
 from sqlmodel import Session, select
 from pydantic import BaseModel
 from typing import Optional
 
-from app.db.database import get_db
+from app.api.error_utils import api_error
+from app.db.database import get_db, engine
 from app.models.resume import Resume
 from app.services import resume_service
 
 router = APIRouter()
+
+
+def _embed_resume_background(resume_id: int, guest_id: str, raw_text: str, parsed_data: dict | None = None):
+    """Run resume embedding out-of-band so upload response is fast."""
+    try:
+        num_chunks = resume_service.embed_resume_for_rag(
+            guest_id=guest_id,
+            raw_text=raw_text,
+            parsed_data=parsed_data,
+        )
+        with Session(engine) as bg_db:
+            resume_service.mark_resume_embedded(resume_id, bg_db)
+        print(f"   ✅ Background embedding complete for resume_id={resume_id}, chunks={num_chunks}")
+    except Exception as e:
+        # Keep this non-fatal; resume remains usable and can be re-embedded later.
+        print(f"   ⚠️ Background embedding failed for resume_id={resume_id}: {e}")
 
 
 # ── Response Schemas ──────────────────────────────────────────────
@@ -53,6 +70,7 @@ class ResumeGetResponse(BaseModel):
 
 @router.post("/upload", response_model=ResumeUploadResponse)
 async def upload_resume(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(..., description="PDF resume file"),
     guest_id: str = Query(..., description="Guest UUID from browser localStorage"),
     db: Session = Depends(get_db),
@@ -75,15 +93,18 @@ async def upload_resume(
 
     # ── Step 1: Validate ─────────────────────────────────────────
     if not file.filename or not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(
+        raise api_error(
             status_code=400,
-            detail="Only PDF files are accepted. Please upload a .pdf resume."
+            code="INVALID_FILE_TYPE",
+            message="Only PDF files are accepted. Please upload a .pdf resume.",
+            context={"expected_extension": ".pdf", "filename": file.filename or ""},
         )
 
     if not guest_id or guest_id.strip() == "":
-        raise HTTPException(
+        raise api_error(
             status_code=400,
-            detail="guest_id is required. Generate a UUID in your browser."
+            code="MISSING_GUEST_ID",
+            message="guest_id is required. Generate a UUID in your browser.",
         )
 
     # ── Step 2: Extract text from PDF ────────────────────────────
@@ -93,7 +114,11 @@ async def upload_resume(
     try:
         raw_text = resume_service.extract_text_from_pdf(file_bytes)
     except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise api_error(
+            status_code=422,
+            code="RESUME_PARSE_ERROR",
+            message=str(e),
+        )
 
     print(f"   ✅ Extracted {len(raw_text)} characters from PDF")
 
@@ -113,20 +138,10 @@ async def upload_resume(
     )
     print(f"   ✅ Resume saved with ID: {resume.id}")
 
-    # ── Step 5: Embed chunks into ChromaDB ───────────────────────
-    print("🔢 Embedding resume chunks into ChromaDB for RAG...")
-    try:
-        num_chunks = resume_service.embed_resume_for_rag(
-            guest_id=guest_id,
-            raw_text=raw_text,
-        )
-        resume_service.mark_resume_embedded(resume.id, db)
-        print(f"   ✅ {num_chunks} chunks embedded into ChromaDB")
-    except Exception as e:
-        # Don't fail the whole upload if embedding fails
-        # Resume is still saved in DB — can be re-embedded later
-        print(f"   ⚠️ ChromaDB embedding failed: {e}")
-        num_chunks = 0
+    # ── Step 5: Queue embedding (non-blocking) ───────────────────
+    print("🔢 Queueing background resume embedding...")
+    background_tasks.add_task(_embed_resume_background, resume.id, guest_id, raw_text, parsed_data)
+    num_chunks = 0
 
     # ── Step 6: Return summary ────────────────────────────────────
     return ResumeUploadResponse(
@@ -140,9 +155,29 @@ async def upload_resume(
             f"Resume processed successfully! "
             f"Found {len(parsed_data.get('skills', []))} skills and "
             f"{len(parsed_data.get('projects', []))} projects. "
-            f"Resume is now available for RAG retrieval."
+            f"Embedding has started in the background and will complete shortly."
         ),
     )
+
+
+@router.get("/{resume_id}/status")
+def get_resume_embedding_status(
+    resume_id: int,
+    db: Session = Depends(get_db),
+):
+    """
+    Lightweight endpoint for polling CV embedding status.
+    Returns only chunks_embedded flag — much faster than the full resume GET.
+    Frontend polls this after upload until chunks_embedded=true.
+    """
+    resume = db.get(Resume, resume_id)
+    if not resume:
+        raise api_error(
+            status_code=404,
+            code="RESUME_NOT_FOUND",
+            message=f"Resume {resume_id} not found.",
+        )
+    return {"resume_id": resume_id, "chunks_embedded": resume.chunks_embedded}
 
 
 @router.get("/{resume_id}", response_model=ResumeGetResponse)
@@ -157,7 +192,12 @@ def get_resume(
     resume = db.get(Resume, resume_id)
 
     if not resume:
-        raise HTTPException(status_code=404, detail=f"Resume {resume_id} not found.")
+        raise api_error(
+            status_code=404,
+            code="RESUME_NOT_FOUND",
+            message=f"Resume {resume_id} not found.",
+            context={"resume_id": resume_id},
+        )
 
     parsed = json.loads(resume.parsed_data) if resume.parsed_data else {}
 
@@ -183,7 +223,9 @@ def get_resume_by_guest(
     Frontend calls this on dashboard load to check if user already has a resume.
     """
     resume = db.exec(
-        select(Resume).where(Resume.guest_id == guest_id)
+        select(Resume)
+        .where(Resume.guest_id == guest_id)
+        .order_by(Resume.id.desc())
     ).first()
 
     if not resume:

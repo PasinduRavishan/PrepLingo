@@ -43,6 +43,7 @@ RULES:
 - If the candidate gives a vague answer, probe deeper with a follow-up
 - Be professional and encouraging, but thorough
 - Do NOT give away answers or hints
+- NEVER introduce yourself more than once — only on question 1
 
 INTERVIEW PROGRESS: Question {question_number} of 8
 """
@@ -51,11 +52,12 @@ INTERVIEW PROGRESS: Question {question_number} of 8
 TECHNICAL_HUMAN = """The candidate just answered:
 "{user_answer}"
 
-Based on their answer and the context provided, ask the NEXT technical interview question.
-If this is question 1, introduce yourself briefly (e.g., "Hi, I'm your technical interviewer today...")
-then ask the first question about a skill or technology from their profile.
+This is question {question_number} of 8.
 
-Keep your response to just the question (and brief intro if first question).
+STRICT FORMATTING RULE:
+- If question_number is 1: give a ONE sentence introduction ("Hi, I'm your technical interviewer today."), then ask the question.
+- If question_number is 2 or higher: output ONLY the question. No greeting. No "Hi". No "I'm your interviewer". Start the response with the question directly.
+
 Do not evaluate or comment on their answer — just ask the next question.
 """
 

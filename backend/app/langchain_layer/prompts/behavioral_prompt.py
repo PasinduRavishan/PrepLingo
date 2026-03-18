@@ -50,9 +50,12 @@ INTERVIEW PROGRESS: Question {question_number} of 8
 BEHAVIORAL_HUMAN = """The candidate just said:
 "{user_answer}"
 
-Based on what they shared and their resume context, ask the next behavioral question.
-If this is question 1, introduce yourself warmly and ask the first behavioral question
-referencing something specific from their resume (a project, role, or experience).
+This is question {question_number} of 8.
+
+STRICT FORMATTING RULE:
+- If question_number is 1: introduce yourself with one warm sentence, then ask the first behavioral question referencing something specific from their resume.
+- If question_number is 2 or higher: output ONLY the next question or STAR probe. No greeting. No "Hi". No self-introduction. Start directly with the question.
+
 If they gave a vague answer, use a STAR probe to get more depth before moving on.
 """
 

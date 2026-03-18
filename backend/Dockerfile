@@ -8,6 +8,9 @@ COPY requirements.txt .
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     && rm -rf /var/lib/apt/lists/*
+# Install CPU-only PyTorch FIRST — prevents sentence-transformers from pulling
+# the full CUDA build (~2.5 GB of nvidia-* libs) on a CPU-only server.
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Pre-download the embedding model (~430 MB) into the image

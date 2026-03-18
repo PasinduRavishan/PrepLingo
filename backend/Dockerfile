@@ -30,9 +30,10 @@ COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/pytho
 COPY --from=builder /usr/local/bin /usr/local/bin/
 COPY --from=builder /root/.cache /root/.cache/
 
-# Copy app code
+# Copy app code and knowledge base docs
 COPY app/ ./app/
 COPY scripts/ ./scripts/
+COPY knowledge_base/ ./knowledge_base/
 COPY .env* ./
 
 # Expose port

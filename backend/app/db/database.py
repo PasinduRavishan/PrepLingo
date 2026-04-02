@@ -30,7 +30,7 @@ settings = get_settings()
 # Set to False in production
 engine = create_engine(
     settings.database_url,
-    echo=settings.app_env == "development",
+  echo=settings.sql_echo,
     connect_args={"check_same_thread": False}  # Required for SQLite with FastAPI
 )
 

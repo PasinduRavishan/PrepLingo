@@ -36,32 +36,27 @@ WHY PER-SESSION MEMORY:
   { 1: ConversationBufferWindowMemory, 2: ConversationBufferWindowMemory, ... }
 """
 
-from langchain.memory import ConversationBufferWindowMemory
+from langchain_core.messages import AIMessage, HumanMessage
 
-# In-memory store: { session_id (int) → memory object }
-# This is cleared when the server restarts — acceptable for dev/MVP
-_session_memories: dict[int, ConversationBufferWindowMemory] = {}
+# In-memory store: { session_id (int) -> list[BaseMessage] }
+# We keep the latest 6 exchanges = 12 messages.
+_session_memories: dict[int, list] = {}
+_MAX_EXCHANGES = 6
+_MAX_MESSAGES = _MAX_EXCHANGES * 2
 
 
-def get_or_create_memory(session_id: int) -> ConversationBufferWindowMemory:
+def get_or_create_memory(session_id: int) -> list:
     """
     Get existing memory for a session, or create new memory.
     
     Call this at the start of every /message request.
     
-    k=6: keep last 6 exchanges (12 messages: 6 questions + 6 answers)
-    return_messages=True: returns as Message objects (not plain string)
-                          Required for ChatPromptTemplate MessagesPlaceholder
-    memory_key="history": the key we use in our prompt templates {history}
+    Keeps last 6 exchanges (12 messages: Human + AI per exchange).
+    Returns a list of LangChain message objects compatible with
+    ChatPromptTemplate MessagesPlaceholder.
     """
     if session_id not in _session_memories:
-        _session_memories[session_id] = ConversationBufferWindowMemory(
-            k=6,
-            return_messages=True,
-            memory_key="history",  # Must match {history} in prompt templates
-            input_key="user_answer",
-            output_key="ai_question",
-        )
+        _session_memories[session_id] = []
     return _session_memories[session_id]
 
 
@@ -76,11 +71,13 @@ def save_exchange(session_id: int, user_answer: str, ai_question: str):
         user_answer: What the user said
         ai_question: What the AI replied with (the next question)
     """
-    memory = get_or_create_memory(session_id)
-    memory.save_context(
-        {"user_answer": user_answer},
-        {"ai_question": ai_question},
-    )
+    history = get_or_create_memory(session_id)
+    history.append(HumanMessage(content=user_answer))
+    history.append(AIMessage(content=ai_question))
+
+    # Sliding window: keep only the latest 6 exchanges.
+    if len(history) > _MAX_MESSAGES:
+        del history[:-_MAX_MESSAGES]
 
 
 def get_history(session_id: int) -> list:
@@ -98,8 +95,7 @@ def get_history(session_id: int) -> list:
     """
     if session_id not in _session_memories:
         return []
-    memory = _session_memories[session_id]
-    return memory.load_memory_variables({}).get("history", [])
+    return _session_memories[session_id]
 
 
 def clear_memory(session_id: int):

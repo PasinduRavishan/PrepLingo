@@ -52,8 +52,12 @@ INTERVIEW PROGRESS: Question {question_number} of 8
 SYSTEM_DESIGN_HUMAN = """The candidate just said:
 "{user_answer}"
 
-Continue the system design interview. Ask the next logical question based on their answer.
-If this is question 1, introduce the design problem and ask them to start with requirements.
+This is question {question_number} of 8.
+
+STRICT FORMATTING RULE:
+- If question_number is 1: briefly introduce the design problem, then ask them to start with requirements.
+- If question_number is 2 or higher: output ONLY the next question. No greeting. No "Hi". No self-introduction. Start directly with the question.
+
 Remember: you're guiding a deep-dive conversation, not a quiz.
 """
 

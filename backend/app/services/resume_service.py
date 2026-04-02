@@ -34,10 +34,11 @@ import fitz  # PyMuPDF — PDF text extraction
 import json
 from typing import Optional
 
+from langchain_core.documents import Document
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import PromptTemplate
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_groq import ChatGroq
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from app.langchain_layer.llm_factory import build_llm
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
@@ -165,11 +166,7 @@ async def parse_resume_with_llm(raw_text: str) -> dict:
         partial_variables={"format_instructions": parser.get_format_instructions()},
     )
 
-    llm = ChatGroq(
-        model=settings.groq_model,
-        groq_api_key=settings.groq_api_key,
-        temperature=0.0,  # Deterministic for data extraction
-    )
+    llm = build_llm(temperature=0.0)  # Deterministic for structured data extraction
 
     # LCEL chain: prompt → llm → json parser
     # ainvoke = async invoke (non-blocking — doesn't hold up the server)
@@ -250,57 +247,127 @@ def mark_resume_embedded(resume_id: int, db: Session):
 
 # ── Step 4: Embed Resume Chunks for RAG ───────────────────────────
 
-def embed_resume_for_rag(guest_id: str, raw_text: str) -> int:
+def embed_resume_for_rag(
+    guest_id: str,
+    raw_text: str,
+    parsed_data: Optional[dict] = None,
+) -> int:
     """
-    Chunk the resume text and store embeddings in ChromaDB.
+    Chunk the resume and store embeddings in ChromaDB.
 
-    WHY CHUNK THE RESUME?
-      The entire resume might be 2000+ characters — too long for a single vector.
-      A vector of the whole resume is too abstract: it tries to represent EVERYTHING.
-      
-      Solution: Split into smaller chunks. Each chunk has a focused meaning:
-        Chunk 1: "Skills: Python, React, MongoDB, Docker..."
-        Chunk 2: "Project: Blockchain Supply Chain using Hyperledger Fabric..."
-        Chunk 3: "Work Experience: Backend Developer at XYZ Corp..."
-      
-      When the AI asks "tell me about your Python projects",
-      the retriever finds Chunk 1 (skills) + Chunk 2 (blockchain project)
-      because their MEANING is similar to the query.
+    STRATEGY:
+      When parsed_data is available (post-LLM extraction), we build
+      semantically clean chunks directly from the structured JSON.
+      This produces fewer, higher-quality chunks with no PDF noise:
+        Chunk 1: Candidate identity + all skills
+        Chunk 2..N: One chunk per project (name + desc + tech + outcomes)
+        Chunk N+1: Work experience summary
+        Chunk N+2: Education summary
 
-    CHUNK SIZE:
-      400 chars, 50 overlap — smaller than knowledge base chunks (800)
-      because resume sections are naturally short and discrete.
+      Falls back to RecursiveCharacterTextSplitter on raw_text when
+      parsed_data is absent or too sparse.
 
-    METADATA TAGGED ON EACH CHUNK:
-      guest_id: "abc-123"         → filter to THIS user's resume only
-      source: "resume"            → identifies this as a resume chunk (not KB)
-      interview_type: "resume"    → so resume-type retriever finds it
+    CLEANUP:
+      Old chunks for this guest_id are deleted before inserting new ones
+      so that re-uploads never accumulate stale vectors in ChromaDB.
 
     Returns:
         Number of chunks stored in ChromaDB
     """
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=400,
-        chunk_overlap=50,
-        separators=["\n\n", "\n", " ", ""],
-    )
+    chunks: list[Document] = []
 
-    # create_documents wraps text strings into Document objects
-    chunks = splitter.create_documents([raw_text])
+    # ── Strategy 1: structured chunks from parsed LLM output ─────────
+    if parsed_data:
+        name = parsed_data.get("name", "")
+        skills = parsed_data.get("skills", [])
 
-    # Tag each chunk with metadata for filtered retrieval
+        # Chunk: identity + full skill list
+        if name or skills:
+            skills_str = ", ".join(str(s) for s in skills) if skills else "Not specified"
+            chunks.append(Document(page_content=f"Candidate: {name}\nTechnical skills: {skills_str}"))
+
+        # One chunk per project — keeps each project's context together
+        for project in parsed_data.get("projects", []):
+            if not isinstance(project, dict):
+                continue
+            parts = []
+            if project.get("name"):
+                parts.append(f"Project: {project['name']}")
+            if project.get("description"):
+                parts.append(f"Description: {project['description']}")
+            tech = project.get("tech_stack", [])
+            if isinstance(tech, list) and tech:
+                parts.append(f"Technologies: {', '.join(str(t) for t in tech)}")
+            if project.get("outcomes"):
+                parts.append(f"Outcomes: {project['outcomes']}")
+            if parts:
+                chunks.append(Document(page_content="\n".join(parts)))
+
+        # Chunk: work experience summary
+        experience = parsed_data.get("experience", [])
+        if experience:
+            lines = ["Work Experience:"]
+            for exp in experience:
+                if isinstance(exp, dict):
+                    role = exp.get("role", "")
+                    company = exp.get("company", "")
+                    duration = exp.get("duration", "")
+                    desc = exp.get("description", "")
+                    line = f"  {role} at {company}"
+                    if duration:
+                        line += f" ({duration})"
+                    if desc:
+                        line += f": {desc}"
+                    lines.append(line)
+            chunks.append(Document(page_content="\n".join(lines)))
+
+        # Chunk: education
+        education = parsed_data.get("education", [])
+        if education:
+            lines = ["Education:"]
+            for edu in education:
+                if isinstance(edu, dict):
+                    degree = edu.get("degree", "")
+                    institution = edu.get("institution", "")
+                    year = edu.get("year", "")
+                    line = f"  {degree}"
+                    if institution:
+                        line += f", {institution}"
+                    if year:
+                        line += f" ({year})"
+                    lines.append(line)
+            chunks.append(Document(page_content="\n".join(lines)))
+
+    # ── Fallback: raw-text splitter ────────────────────────────────────
+    if len(chunks) < 2:
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=400,
+            chunk_overlap=50,
+            separators=["\n\n", "\n", " ", ""],
+        )
+        chunks = splitter.create_documents([raw_text])
+
+    if not chunks:
+        return 0
+
+    # Tag all chunks with metadata for filtered retrieval
     for chunk in chunks:
         chunk.metadata["guest_id"] = guest_id
         chunk.metadata["source"] = "resume"
         chunk.metadata["interview_type"] = "resume"
 
-    if not chunks:
-        return 0
-
-    # Add to ChromaDB "resumes" collection
-    # This calls the embedding model (Google text-embedding-004) for each chunk
+    # ── Delete stale chunks before inserting (fixes re-upload bug) ─────
     store = get_resume_store()
-    store.add_documents(chunks)
+    try:
+        collection = store._collection
+        existing = collection.get(where={"guest_id": guest_id})
+        old_ids = existing.get("ids", [])
+        if old_ids:
+            collection.delete(ids=old_ids)
+            print(f"   🗑️  Deleted {len(old_ids)} stale chunks for guest_id={guest_id}")
+    except Exception as e:
+        print(f"   ⚠️  Could not purge old resume chunks: {e}")
 
+    store.add_documents(chunks)
     print(f"✅ Embedded {len(chunks)} resume chunks for guest_id={guest_id}")
     return len(chunks)

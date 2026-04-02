@@ -1,0 +1,15 @@
+__pycache__
+*.pyc
+.pytest_cache
+.venv
+venv
+*.egg-info
+.git
+.gitignore
+*.md
+.env.local
+.env.*.local
+preplingo.db
+vector_store_data/
+*.log
+.DS_Store

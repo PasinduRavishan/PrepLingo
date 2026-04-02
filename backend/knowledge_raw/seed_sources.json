@@ -1,0 +1,49 @@
+{
+  "technical": {
+    "databases": [
+      "https://www.postgresql.org/docs/current/indexes-intro.html",
+      "https://www.postgresql.org/docs/current/transaction-iso.html",
+      "https://redis.io/docs/latest/develop/"
+    ],
+    "api_design": [
+      "https://fastapi.tiangolo.com/tutorial/",
+      "https://developer.mozilla.org/en-US/docs/Web/HTTP",
+      "https://learn.microsoft.com/en-us/azure/architecture/best-practices/api-design"
+    ],
+    "messaging_async": [
+      "https://www.rabbitmq.com/tutorials",
+      "https://kafka.apache.org/documentation/"
+    ]
+  },
+  "system_design": {
+    "scalability_patterns": [
+      "https://aws.amazon.com/architecture/well-architected/",
+      "https://www.cloudflare.com/learning/cdn/what-is-caching/",
+      "https://highscalability.com/"
+    ],
+    "case_studies": [
+      "https://systemdesign.one/",
+      "https://www.hellointerview.com/learn/system-design/in-a-hurry/introduction"
+    ]
+  },
+  "behavioral": {
+    "star_method": [
+      "https://www.themuse.com/advice/star-interview-method",
+      "https://www.indeed.com/career-advice/interviewing/star-interview-response-technique"
+    ],
+    "leadership_conflict": [
+      "https://www.mindtools.com/ab3w7qq/conflict-resolution",
+      "https://hbr.org/topic/leadership"
+    ]
+  },
+  "resume_interview": {
+    "project_deep_dive": [
+      "https://www.indeed.com/career-advice/interviewing/project-based-interview-questions",
+      "https://www.interviewquery.com/p/product-manager-project-questions"
+    ],
+    "metrics_tradeoffs": [
+      "https://www.atlassian.com/agile/project-management/metrics",
+      "https://martinfowler.com/articles/practical-test-pyramid.html"
+    ]
+  }
+}

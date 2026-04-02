@@ -50,22 +50,12 @@ WHY async (ainvoke not invoke)?
 
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 from langchain_core.output_parsers import StrOutputParser
-from langchain_groq import ChatGroq
-from app.config import get_settings
+from app.langchain_layer.llm_factory import build_llm
 from app.langchain_layer.retrievers.dual_retriever import format_retrieved_docs
 
-settings = get_settings()
-
-# The LLM — Groq (lightning fast Llama 3/Mixtral)
-# temperature=0.7: a bit creative but still focused
-#   0.0 = deterministic (always same answer)
-#   1.0 = very creative/random
-#   0.7 = good balance for interview questions
-llm = ChatGroq(
-    model=settings.groq_model,
-    groq_api_key=settings.groq_api_key,
-    temperature=0.7,
-)
+# temperature=0.7: creative but focused — good balance for interview questions.
+# Fallback to llama-3.1-8b-instant if primary hits rate limit (transparent).
+llm = build_llm(temperature=0.7)
 
 
 def build_question_chain(retriever, prompt):

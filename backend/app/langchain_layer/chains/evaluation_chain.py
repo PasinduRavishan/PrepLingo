@@ -47,19 +47,12 @@ EVALUATION PROMPT DESIGN:
 import json
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import PromptTemplate
-from langchain_groq import ChatGroq
 from pydantic import BaseModel
-from app.config import get_settings
+from app.langchain_layer.llm_factory import build_llm
 
-settings = get_settings()
-
-# Use a slightly lower temperature for evaluation — we want consistent scores
-# temperature=0.1 means the LLM sticks to the task rather than being creative
-llm = ChatGroq(
-    model=settings.groq_model,
-    groq_api_key=settings.groq_api_key,
-    temperature=0.1,
-)
+# temperature=0.1 — consistent, deterministic scores (not creative).
+# Fallback to llama-3.1-8b-instant if primary hits rate limit (transparent).
+llm = build_llm(temperature=0.1)
 
 
 class EvaluationSchema(BaseModel):
@@ -82,7 +75,8 @@ class EvaluationSchema(BaseModel):
 # JsonOutputParser wraps our schema and auto-generates formatting instructions
 parser = JsonOutputParser(pydantic_object=EvaluationSchema)
 
-EVALUATION_PROMPT_TEMPLATE = """You are an expert interview evaluator.
+EVALUATION_PROMPT_TEMPLATE = """You are a friendly mock interview coach evaluating a candidate's answer.
+Your goal is to give honest, constructive feedback that helps them improve — not to fail them.
 
 INTERVIEW QUESTION THAT WAS ASKED:
 {question}
@@ -95,17 +89,18 @@ IDEAL ANSWER CONTEXT (from knowledge base — what a good answer covers):
 
 INTERVIEW TYPE: {interview_type}
 
-Evaluate the candidate's answer fairly. Consider:
-- What they got RIGHT (even if incomplete)
-- What KEY POINTS they MISSED (compared to ideal answer context)
-- How CLEARLY they communicated their answer
-
 SCORING GUIDE:
-  0-3: Poor — major gaps, factual errors
-  4-5: Below average — basic understanding, lacks depth
-  6-7: Average — correct but incomplete
-  8-9: Good — thorough with minor gaps
-  10:  Excellent — comprehensive and well-communicated
+  0:   Complete non-answer — literally "I don't know", "CANT", blank, or zero attempt
+  2-3: Minimal — acknowledged the topic exists but no real explanation
+  4-5: Partial — shows some familiarity, missing key points
+  6-7: Good — correct understanding, could be deeper or clearer
+  8-9: Strong — thorough, well communicated, minor gaps only
+  10:  Excellent — comprehensive, clear, nothing missing
+
+Only give 0 if the candidate gave absolutely no answer (e.g. "i dont know", "cant remember", "no").
+For any genuine attempt — even a short or incomplete one — score at least 2-3 and give useful feedback.
+
+Be encouraging. Point out what they got right, what was missing, and what to study next.
 
 {format_instructions}
 

@@ -194,7 +194,17 @@ Phase 2 -- Resume Parsing - PDF upload - Extract skills and projects
 Phase 3 -- RAG Integration - Knowledge base ingestion - Embeddings -
 Retrieval pipeline
 
-Phase 4 -- Evaluation Engine - Scoring system - Feedback generation
+Phase 4 -- Evaluation Engine - Scoring system - Feedback generation ✅ Implemented (Report service + API + tests)
+
+Phase 5 -- Guest-Mode MVP Hardening ✅ Current Focus
+- Keep product open (no login required)
+- Improve reliability, UX flow, and evaluation quality
+- Validate full end-to-end flow for real users
+
+Phase 6 -- Authentication (Deferred)
+- JWT login/refresh
+- Account-linked resumes/sessions/reports
+- Optional guest-to-account migration
 
 ------------------------------------------------------------------------
 

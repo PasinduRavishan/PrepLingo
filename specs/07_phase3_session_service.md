@@ -87,4 +87,7 @@ The automated integration test (`scripts/test_phase3_session.py`) ran a full sim
 
 ## Next: Phase 4 — Report Service
 
-Now that all evaluations and messages are cleanly stored in the database, the next step is to generate the final analytical report when the session completes (`session.question_count == 8`).
+✅ Implemented in: `specs/08_phase4_report_service.md`
+
+The final report layer now generates and persists analytical summaries from evaluations,
+including per-question scores, per-dimension averages, and top qualitative insights.

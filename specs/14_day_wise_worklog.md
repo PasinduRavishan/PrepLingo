@@ -204,12 +204,76 @@ Confidence: **High** (all changes in current working tree, reviewed end-to-end).
 
 ---
 
+## 2026-03-18
+
+**Full-Stack Production Deployment — GCP VPS with Docker Compose**
+
+Today's session focused on productionising the entire PrepLingo application and deploying it to a live Google Cloud Platform virtual machine. The work spanned LLM configuration improvements, containerisation of the frontend, infrastructure composition, and iterative debugging of the full deployment pipeline.
+
+### 1. LLM Upgrade — Primary/Fallback Model Strategy
+
+Upgraded the primary language model from `llama-3.1-8b-instant` to `llama-3.3-70b-versatile` for significantly better question quality and evaluation accuracy. Implemented an automatic fallback mechanism using LangChain's built-in `with_fallbacks()` API so that if the primary model hits a rate limit (HTTP 429), the system transparently retries with the faster `llama-3.1-8b-instant` model without any user-facing error.
+
+- Created `backend/app/langchain_layer/llm_factory.py` as a single LLM builder used by all chains
+- Updated `QuestionChain`, `EvaluationChain`, and `ResumeService` to use the factory
+- Added `GROQ_FALLBACK_MODEL` to `config.py` and `.env.example`
+
+### 2. Frontend Containerisation
+
+Containerised the Streamlit frontend by writing `frontend_streamlit/Dockerfile`. The frontend reads the backend URL from a `BACKEND_URL` environment variable (defaulting to `localhost` for local dev), injected by Docker Compose as `http://backend:8000` — the internal Docker network hostname. This ensures the frontend container calls the backend directly on the private network without going through nginx.
+
+### 3. Full Docker Compose Architecture
+
+Designed and implemented a three-service Docker Compose setup:
+
+- **backend** — FastAPI + LangChain + ChromaDB, exposed only on the internal Docker network
+- **frontend** — Streamlit app, also internal only, starts after backend passes health check
+- **nginx** — Public-facing reverse proxy on port 80, routes `/api/*` to backend and `/*` to frontend with WebSocket upgrade support for Streamlit's live connection
+
+Added named volumes for persistence: `embedding-cache` (HuggingFace model), `vector-data` (ChromaDB index), and `db-data` (SQLite database). Removed the `version` attribute from `docker-compose.yml` as it is now obsolete in Docker Compose v2.
+
+### 4. Iterative Docker Build Debugging
+
+Resolved a series of build and runtime issues encountered during deployment:
+
+**Issue: `sentence-transformers` missing** — `langchain-huggingface` does not install `sentence-transformers` automatically; it is an unlisted optional dependency. Added it explicitly to `requirements.txt`.
+
+**Issue: `uvicorn` not found in PATH** — The multi-stage Dockerfile copied `/usr/local/lib/python3.11/site-packages` but omitted `/usr/local/bin` where pip-installed executables live. Added `COPY --from=builder /usr/local/bin /usr/local/bin/`.
+
+**Issue: SQLite "unable to open database file"** — The `db-data:/app` volume mount was shadowing the entire `/app` directory, hiding the application code on container restarts and preventing SQLite from writing. Fixed by changing the mount path to `/app/data` and updating `DATABASE_URL` to `sqlite:////app/data/preplingo.db`.
+
+**Issue: Nginx "host not found in upstream"** — Nginx resolves upstream hostnames at startup, before the backend container is ready. Fixed by adding `resolver 127.0.0.11 valid=10s` (Docker's internal DNS) and declaring upstreams as `set $var` variables so resolution happens at request time rather than startup.
+
+**Issue: Disk full on GCP VM** — `sentence-transformers` triggers installation of the full CUDA-enabled PyTorch build (~2.5 GB of nvidia-* libraries) even on a CPU-only server. Fixed by pre-installing CPU-only PyTorch using `pip install torch --index-url https://download.pytorch.org/whl/cpu` before the main `requirements.txt` install, reducing image size by approximately 2.3 GB.
+
+**Issue: `knowledge_base/` not found in container** — The Dockerfile only copied `app/` and `scripts/`. Added `COPY knowledge_base/ ./knowledge_base/` to include the RAG knowledge documents.
+
+**Issue: GCP firewall blocking port 80** — The VM was running correctly but incoming HTTP traffic was rejected by GCP's default network firewall. Created an `allow-http` firewall rule permitting TCP port 80 from all sources.
+
+### 5. GCP VM Provisioned and Live
+
+Provisioned a GCP Compute Engine `e2-medium` VM (2 vCPU, 4 GB RAM, 30 GB SSD, Ubuntu 22.04). Installed Docker via the official install script, cloned the repository, configured secrets in `.env`, ran the full Docker Compose build, and executed the knowledge base ingestion script inside the running backend container.
+
+Application is live and accessible at the VM's public IP. All three containers — backend, frontend, and nginx — are running and healthy.
+
+### 6. Documentation Updated
+
+- `specs/15_deployment_guide.md` — comprehensive GCP deployment guide covering VM creation, Docker setup, ingestion, HTTPS, and day-to-day operations
+- `specs/DECISIONS.md` — updated with LLM upgrade and fallback strategy
+- `specs/03_techstack_and_repo.md` — updated repository structure and tech stack
+- `.env.example` (root) — added for docker-compose secrets reference
+
+Confidence: **High** (all changes deployed and verified live).
+
+---
+
 ## Compact Timeline Summary
 
 1. 2026-03-12: Foundation specs and early tests drafted
 2. 2026-03-13: Phase 1 to 3 backend and RAG base implemented
 3. 2026-03-16: Phase 4 completed, Phase 5 guest hardening/testing/specs expanded
 4. 2026-03-17: Full system hardening — embedding migration, eval fixes, greeting bug, ingestion filters, complete Streamlit frontend built, docs updated
+5. 2026-03-18: LLM upgrade with fallback, full Docker Compose with nginx, GCP VM provisioned and deployed live
 
 ---
 

@@ -236,7 +236,7 @@ curl ifconfig.me
 
 # Or check from GCP Console → VM Instances → External IP
 ```
-
+34.55.196.147
 Test in browser:
 - `http://YOUR_VM_IP/` → PrepLingo Streamlit UI
 - `http://YOUR_VM_IP/health` → `{"status": "ok"}`
